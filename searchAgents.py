@@ -299,14 +299,17 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return (self.startingPosition, [False,False,False,False])
 
     def isGoalState(self, state: Any):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        if False in state[1]:
+            return False
+        else:
+            return True
 
     def getSuccessors(self, state: Any):
         """
@@ -318,7 +321,6 @@ class CornersProblem(search.SearchProblem):
             state, 'action' is the action required to get there, and 'stepCost'
             is the incremental cost of expanding to that successor
         """
-
         successors = []
         for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
             # Add a successor state to the successor list if the action is legal
@@ -328,8 +330,21 @@ class CornersProblem(search.SearchProblem):
             #   nextx, nexty = int(x + dx), int(y + dy)
             #   hitsWall = self.walls[nextx][nexty]
 
-            "*** YOUR CODE HERE ***"
-
+            x,y = state[0]
+            dx,dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            hitsWall = self.walls[nextx][nexty]
+            if hitsWall == False:
+                updatedCorners = []
+                for i in range(len(self.corners)):
+                    oldCorners = state[1][i]
+                    if self.corners[i] == (nextx, nexty) or oldCorners == True:
+                        updatedCorners.append(True)
+                    else:
+                        updatedCorners.append(False)
+                nextState = ((nextx, nexty),updatedCorners)
+                cost = 1
+                successors.append(( nextState, action, cost) )
         self._expanded += 1 # DO NOT CHANGE
         return successors
 
@@ -360,11 +375,17 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     shortest path from the state to a goal of the problem; i.e.  it should be
     admissible (as well as consistent).
     """
+    x,y = state[0]
     corners = problem.corners # These are the corner coordinates
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
-
-    "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    maxDist = 0
+    for i in range(len(state[1])):
+        corner = corners[i]
+        if state[1][i] == False:
+            maxDist = max([abs(x - corner[0]) + abs(y - corner[1]), maxDist])
+    if problem.isGoalState(state):
+        maxDist = 0
+    return maxDist # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -457,8 +478,12 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     problem.heuristicInfo['wallCount']
     """
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
-    return 0
+    foodList = foodGrid.asList()
+    score = 0
+    for x,y in foodList:
+        #Example usage: mazeDistance( (2,4), (5,6), gameState)
+        score = max([score, mazeDistance((x,y),position, problem.startingGameState)])
+    return score
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -488,8 +513,21 @@ class ClosestDotSearchAgent(SearchAgent):
         walls = gameState.getWalls()
         problem = AnyFoodSearchProblem(gameState)
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        seen = []
+        beginning = problem.getStartState()
+        frontier = util.Queue()
+        frontier.push((beginning, []))
+        while frontier.isEmpty() == False:
+            node, path = frontier.pop()
+            if node in seen:
+                continue
+            else:
+                seen.append(node)
+                if problem.isGoalState(node):
+                    return path
+                for child in problem.getSuccessors(node):
+                    frontier.push((child[0], path + [child[1]]))
+        return []
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -524,8 +562,9 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         """
         x,y = state
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        if self.food[x][y]:
+            return True
+        return False
 
 def mazeDistance(point1: Tuple[int, int], point2: Tuple[int, int], gameState: pacman.GameState) -> int:
     """
